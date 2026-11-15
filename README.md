@@ -37,7 +37,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 
 ![Quad View settings panel](docs/images/quad-view-settings.png)
 
-*The image is a preview of the panel recreated from `draw_quad_view_ui()`; the in-game panel uses UEVR's ImGui theme.*
+*The in-game panel in the test build. This example is tuned: atlas 2596×1876, 10% of native stereo pixels. The defaults are in the table below.*
 
 | Section | Setting | Default | What it does |
 | --- | --- | --- | --- |
