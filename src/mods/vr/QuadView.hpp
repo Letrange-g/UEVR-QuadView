@@ -34,7 +34,8 @@ struct Settings {
     double focus_width{0.30};   // focus window, share of the eye's full tangent width
     double focus_height{0.30};  // and height
     double focus_density{1.0};  // focus pixel density relative to the headset's native density
-    double dead_zone{0.03};     // tangent units (~1.7 deg) the gaze must move before the window follows
+    double dead_zone{0.0};      // tangent units (~1.7 deg) the gaze must move before the window follows
+    double gaze_smoothing_ms{8.0};  // low-pass time constant that averages eye-tracker noise
     uint64_t gaze_return_ms{500}; // without gaze for this long, the window recentres
     double offset_x{0.0};       // sharp window shift, share of the eye's tangent width (+ = right)
     double offset_y{0.0};       // and height (+ = up), for trackers that sit slightly off
@@ -161,47 +162,113 @@ inline Tangents focus_window_for(const Tangents& full, const Settings& s, double
         cx + s.offset_x * full.width(), cy + s.offset_y * full.height());
 }
 
-// Keeps the focus windows still against eye-tracker noise: both eyes' centres
-// jump to the new gaze together once either eye's gaze has moved past the dead
-// zone (saccades hide the jump). Without gaze for return_ms, they recentre.
-// Centres are in each eye's tangent space; (0, 0) is straight ahead.
+// Median of three, used to reject single-frame eye-tracker spikes.
+inline double median3(double a, double b, double c) {
+    return (std::max)((std::min)(a, b), (std::min)((std::max)(a, b), c));
+}
+
+// Keeps the focus windows together with the gaze. The raw gaze is
+// median-filtered (one-frame spikes never pass) and then low-passed with the
+// user's smoothing time, which averages the remaining tracker noise over a few
+// milliseconds. The window follows the filtered gaze directly, so it matches
+// what the eyes are looking at; an optional dead zone holds it for small
+// movements. Without gaze for return_ms, it recentres. Centres are in each
+// eye's tangent space; (0, 0) is straight ahead.
 struct GazeFilter {
-    // A fixation that settles away from the window centre (slow drift or a
-    // small saccade inside the dead zone) re-centres the window after this long,
-    // so the window never trails the eyes for more than a moment.
-    static constexpr uint64_t SETTLE_MS = 120;
-    static constexpr double SETTLE_SHARE = 0.35; // of the dead zone
+    // Once the filtered gaze has settled this close to the median raw sample,
+    // stop following; the window stays centred on the fixation.
+    static constexpr double SETTLED = 0.004;
 
-    double cx[2]{0, 0}, cy[2]{0, 0};
+    double cx[2]{0, 0}, cy[2]{0, 0}; // window centre
+    double fx[2]{0, 0}, fy[2]{0, 0}; // filtered gaze target
+    double rx[2][3]{}, ry[2][3]{};    // last three raw samples per eye
+    uint32_t ri[2]{0, 0};             // next raw-sample slot
     bool seeded{false};
+    bool following{false};
     uint64_t last_valid_ms{0};
-    uint64_t drift_since_ms{0};
+    uint64_t last_update_ms{0};
 
-    void update(const double gx[2], const double gy[2], uint32_t valid_mask, double dead_zone, uint64_t now_ms,
-                uint64_t return_ms) {
+    // smoothing_ms is the low-pass time constant: how many milliseconds of gaze
+    // are averaged. 0 follows the median sample immediately. The frame time is
+    // used as dt, so the feel does not change with the frame rate.
+    void update(const double gx[2], const double gy[2], uint32_t valid_mask, double dead_zone,
+                double smoothing_ms, uint64_t now_ms, uint64_t return_ms) {
         if ((valid_mask & 3u) == 3u) {
             last_valid_ms = now_ms;
-            bool move = !seeded;
-            bool drifting = false;
-            for (int i = 0; i < 2; ++i) {
-                const double d = std::hypot(gx[i] - cx[i], gy[i] - cy[i]);
-                if (d > dead_zone) move = true;
-                if (d > dead_zone * SETTLE_SHARE) drifting = true;
-            }
-            if (!move && drifting && dead_zone > 0) {
-                if (drift_since_ms == 0) drift_since_ms = now_ms;
-                if (now_ms - drift_since_ms >= SETTLE_MS) move = true;
-            } else if (!drifting) {
-                drift_since_ms = 0;
-            }
-            if (move) {
-                for (int i = 0; i < 2; ++i) { cx[i] = gx[i]; cy[i] = gy[i]; }
+
+            const uint64_t dt_ms = last_update_ms != 0 && now_ms > last_update_ms
+                ? std::clamp<uint64_t>(now_ms - last_update_ms, 1, 100)
+                : 11;
+            last_update_ms = now_ms;
+            const double alpha = smoothing_ms <= 0.0
+                ? 1.0
+                : 1.0 - std::exp(-double(dt_ms) / smoothing_ms);
+
+            if (!seeded) {
+                for (int i = 0; i < 2; ++i) {
+                    for (int j = 0; j < 3; ++j) {
+                        rx[i][j] = gx[i];
+                        ry[i][j] = gy[i];
+                    }
+                    ri[i] = 0;
+                    fx[i] = gx[i];
+                    fy[i] = gy[i];
+                    cx[i] = gx[i];
+                    cy[i] = gy[i];
+                }
                 seeded = true;
-                drift_since_ms = 0;
+                following = false;
+                return;
+            }
+
+            double mx[2]{}, my[2]{};
+            for (int i = 0; i < 2; ++i) {
+                rx[i][ri[i]] = gx[i];
+                ry[i][ri[i]] = gy[i];
+                ri[i] = (ri[i] + 1) % 3;
+
+                mx[i] = median3(rx[i][0], rx[i][1], rx[i][2]);
+                my[i] = median3(ry[i][0], ry[i][1], ry[i][2]);
+                fx[i] += alpha * (mx[i] - fx[i]);
+                fy[i] += alpha * (my[i] - fy[i]);
+            }
+
+            bool move = false;
+            for (int i = 0; i < 2; ++i) {
+                if (std::hypot(fx[i] - cx[i], fy[i] - cy[i]) > dead_zone) {
+                    move = true;
+                }
+            }
+
+            if (move) {
+                following = true;
+            }
+
+            if (following) {
+                bool settled = true;
+                for (int i = 0; i < 2; ++i) {
+                    // The window goes straight to the filtered gaze, which is
+                    // already smooth: it never trails behind a saccade.
+                    cx[i] = fx[i];
+                    cy[i] = fy[i];
+                    if (std::hypot(mx[i] - fx[i], my[i] - fy[i]) > SETTLED) {
+                        settled = false;
+                    }
+                }
+                if (settled) {
+                    following = false;
+                }
             }
         } else if (seeded && now_ms - last_valid_ms > return_ms) {
-            for (int i = 0; i < 2; ++i) { cx[i] = 0; cy[i] = 0; }
+            for (int i = 0; i < 2; ++i) {
+                cx[i] = 0;
+                cy[i] = 0;
+                fx[i] = 0;
+                fy[i] = 0;
+                ri[i] = 0;
+            }
             seeded = false;
+            following = false;
         }
     }
 };

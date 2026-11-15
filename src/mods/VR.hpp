@@ -526,6 +526,7 @@ public:
         s.focus_height = m_quad_view_focus_height->value();
         s.focus_density = m_quad_view_focus_density->value();
         s.dead_zone = m_quad_view_follow_gaze->value() ? m_quad_view_gaze_dead_zone->value() : 0.0;
+        s.gaze_smoothing_ms = m_quad_view_follow_gaze->value() ? m_quad_view_gaze_smoothing_ms->value() : 0.0;
         s.offset_x = m_quad_view_offset_x->value();
         s.offset_y = m_quad_view_offset_y->value();
         return s;
@@ -556,6 +557,13 @@ public:
 
     // The sharp window of one eye, in tangents, inside that eye's real field of view.
     uevr::quadview::Tangents get_quad_view_focus_tangents(uint32_t eye) const;
+
+    // Quad View: latch the gaze window once per rendered frame. The sharp-view
+    // projection, the compose and the overlay submit all read this snapshot, so
+    // a gaze update landing between them cannot shift the sharp content against
+    // its own window. Falls back to the live value until the first latch.
+    void latch_quad_view_focus(uint64_t frame) const;
+    uevr::quadview::Tangents get_quad_view_focus_tangents_rendered(uint32_t eye) const;
 
     bool is_using_quad_view() const {
         return m_rendering_method->value() == RenderingMethod::QUAD_VIEW && !is_using_afr() &&
@@ -1669,7 +1677,10 @@ private:
     const ModSlider::Ptr m_quad_view_focus_height{ ModSlider::create(generate_name("QuadViewFocusHeight"), 0.1f, 0.8f, 0.25f) };
     const ModSlider::Ptr m_quad_view_focus_density{ ModSlider::create(generate_name("QuadViewFocusDensity"), 0.5f, 2.0f, 1.0f) };
     const ModToggle::Ptr m_quad_view_follow_gaze{ ModToggle::create(generate_name("QuadViewFollowGaze"), true) };
-    const ModSlider::Ptr m_quad_view_gaze_dead_zone{ ModSlider::create(generate_name("QuadViewGazeDeadZone"), 0.0f, 0.15f, 0.03f) };
+    const ModSlider::Ptr m_quad_view_gaze_dead_zone{ ModSlider::create(generate_name("QuadViewGazeDeadZone"), 0.0f, 0.15f, 0.0f) };
+    // Low-pass time constant for the gaze, in milliseconds. A few ms averages
+    // tracker noise without making the sharp window lag behind the eyes.
+    const ModSlider::Ptr m_quad_view_gaze_smoothing_ms{ ModSlider::create(generate_name("QuadViewGazeSmoothingMs"), 0.0f, 100.0f, 8.0f) };
     const ModSlider::Ptr m_quad_view_wide_lod_scale{ ModSlider::create(generate_name("QuadViewWideLODScale"), 0.1f, 1.0f, 0.5f) };
     const ModToggle::Ptr m_quad_view_shared_exposure{ ModToggle::create(generate_name("QuadViewSharedExposure"), true) };
     const ModSlider::Ptr m_quad_view_exposure_bias{ ModSlider::create(generate_name("QuadViewExposureBias"), 0.5f, 2.0f, 1.0f) };
@@ -1693,6 +1704,13 @@ private:
     const ModToggle::Ptr m_quad_view_allow_ue4{ ModToggle::create(generate_name("QuadViewAllowUE4"), false) };
     const ModToggle::Ptr m_quad_view_cull_actors{ ModToggle::create(generate_name("QuadViewCullSmallActors"), false) };
     const ModSlider::Ptr m_quad_view_cpu_particles{ ModSlider::create(generate_name("QuadViewCPUParticles"), 0.1f, 1.0f, 1.0f) };
+    // Quad View: the gaze window the current render frame was built with. The
+    // sharp-view projections and the compose both read this snapshot, so a pose
+    // update between them cannot move the window against the rendered content.
+    mutable std::mutex m_quad_focus_render_mtx{};
+    mutable std::array<uevr::quadview::Tangents, 2> m_quad_focus_render{};
+    mutable bool m_quad_focus_render_set{false};
+    mutable uint64_t m_quad_focus_render_frame{0};
     const ModToggle::Ptr m_native_stereo_fix_preserve_secondary_pass{ ModToggle::create(generate_name("NativeStereoFixPreserveSecondaryPass"), true) };
     const ModToggle::Ptr m_native_stereo_fix_texture_array_submit{ ModToggle::create(generate_name("NativeStereoFixTextureArraySubmit"), false) };
     const ModToggle::Ptr m_native_stereo_fix_async_openxr_wait{ ModToggle::create(generate_name("NativeStereoFixAsyncOpenXRWait"), false) };
@@ -2025,6 +2043,7 @@ public:
             *m_quad_view_focus_density,
             *m_quad_view_follow_gaze,
             *m_quad_view_gaze_dead_zone,
+            *m_quad_view_gaze_smoothing_ms,
             *m_quad_view_wide_lod_scale,
             *m_quad_view_shared_exposure,
             *m_quad_view_exposure_bias,

@@ -65,26 +65,69 @@ static void window_tests() {
 }
 
 static void gaze_tests() {
+    // 15 ms smoothing at a 90 Hz frame rate (11 ms between updates).
     q::GazeFilter g{};
     const double a[2]{0.10, 0.12}, b[2]{-0.05, -0.04};
-    g.update(a, b, 3u, 0.03, 1000, 500);
+    g.update(a, b, 3u, 0.0, 15.0, 1000, 500);
     expect(g.seeded && near(g.cx[0], 0.10) && near(g.cy[1], -0.04), "first valid gaze seeds both eyes");
-    const double a2[2]{0.11, 0.13};
-    g.update(a2, b, 3u, 0.03, 1010, 500);
-    expect(near(g.cx[0], 0.10), "movement inside the dead zone is ignored");
-    const double a3[2]{0.10, 0.20};
-    g.update(a3, b, 3u, 0.03, 1020, 500);
-    expect(near(g.cx[0], 0.10) && near(g.cx[1], 0.20), "either eye leaving the dead zone moves both");
-    const double a4[2]{0.115, 0.215};   // a small settle inside the dead zone
-    g.update(a4, b, 3u, 0.03, 1030, 500);
-    expect(near(g.cx[0], 0.10), "a small offset does not move the window at once");
-    g.update(a4, b, 3u, 0.03, 1100, 500);
-    expect(near(g.cx[0], 0.10), "nor before it has settled");
-    g.update(a4, b, 3u, 0.03, 1160, 500);
-    expect(near(g.cx[0], 0.115), "a settled offset re-centres the window");
-    g.update(a3, b, 1u, 0.03, 1400, 500);
+
+    // Alternating tracker noise is averaged, so the window stays on the fixation.
+    for (int i = 0; i < 30; ++i) {
+        const double n[2]{0.10 + (i % 2 ? 0.012 : -0.012), 0.12 + (i % 2 ? -0.010 : 0.010)};
+        const double m[2]{-0.05 + (i % 2 ? 0.010 : -0.010), -0.04 + (i % 2 ? -0.012 : 0.012)};
+        g.update(n, m, 3u, 0.0, 15.0, 1010 + (uint64_t)i * 10, 500);
+    }
+    expect(near(g.cx[0], 0.10, 0.006) && near(g.cy[1], -0.04, 0.006),
+        "smoothing averages tracker noise and the window stays on the fixation");
+
+    // A real change is median-filtered for one sample, then arrives within a
+    // few frames instead of trailing the gaze.
+    const double c[2]{0.20, 0.22}, d[2]{-0.15, -0.14};
+    g.update(c, d, 3u, 0.0, 15.0, 1400, 500);
+    expect(near(g.cx[0], 0.10, 0.02), "the first step sample is filtered");
+    for (int i = 1; i <= 4; ++i) {
+        g.update(c, d, 3u, 0.0, 15.0, 1400 + (uint64_t)i * 10, 500);
+    }
+    expect(g.cx[0] > 0.18 && g.cx[0] <= 0.20, "a real gaze change reaches the window within a few frames");
+    expect(g.cx[1] > 0.20 && g.cx[1] <= 0.22, "the other eye follows too");
+    expect(g.cy[1] < -0.13 && g.cy[1] >= -0.14, "and the vertical axis follows");
+
+    // The smoothing time is the user-facing knob: 0 ms follows at once, a
+    // longer time arrives later.
+    q::GazeFilter fast{}, slow{};
+    const double e[2]{0.30, 0.30}, f2[2]{0.30, 0.30};
+    fast.update(a, b, 3u, 0.0, 0.0, 0, 500);
+    slow.update(a, b, 3u, 0.0, 50.0, 0, 500);
+    fast.update(e, f2, 3u, 0.0, 0.0, 11, 500);
+    slow.update(e, f2, 3u, 0.0, 50.0, 11, 500);
+    fast.update(e, f2, 3u, 0.0, 0.0, 22, 500);
+    slow.update(e, f2, 3u, 0.0, 50.0, 22, 500);
+    expect(fast.cx[0] > slow.cx[0] + 0.05, "a shorter smoothing time follows sooner");
+
+    // An optional dead zone holds the window until the gaze has moved far enough.
+    q::GazeFilter hold{};
+    hold.update(a, b, 3u, 0.05, 0.0, 0, 500);
+    const double small[2]{0.13, 0.14}, small_v[2]{-0.05, -0.04};
+    hold.update(small, small_v, 3u, 0.05, 0.0, 11, 500);
+    hold.update(small, small_v, 3u, 0.05, 0.0, 22, 500);
+    expect(near(hold.cx[0], 0.10, 0.001), "a dead zone holds small movements");
+    const double wide[2]{0.30, 0.30}, wide_v[2]{0.10, 0.10};
+    hold.update(wide, wide_v, 3u, 0.05, 0.0, 33, 500);
+    hold.update(wide, wide_v, 3u, 0.05, 0.0, 44, 500);
+    expect(hold.cx[0] > 0.25, "beyond the dead zone the window follows");
+
+    // A one-frame spike never reaches the filter, whatever the smoothing.
+    q::GazeFilter spike{};
+    spike.update(a, b, 3u, 0.0, 15.0, 0, 500);
+    for (int i = 0; i < 20; ++i) {
+        const double sx[2]{(i == 10) ? 0.4 : 0.10, 0.12};
+        spike.update(sx, b, 3u, 0.0, 15.0, 11 + (uint64_t)i * 11, 500);
+    }
+    expect(near(spike.cx[0], 0.10, 0.005), "a one-frame gaze spike is rejected");
+
+    g.update(c, d, 1u, 0.0, 15.0, 1700, 500);
     expect(g.seeded, "a short gaze dropout keeps the window");
-    g.update(a3, b, 0u, 0.03, 1700, 500);
+    g.update(c, d, 0u, 0.0, 15.0, 2300, 500);
     expect(!g.seeded && near(g.cx[0], 0.0) && near(g.cy[1], 0.0), "a long dropout recentres");
 }
 

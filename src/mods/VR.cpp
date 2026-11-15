@@ -10733,6 +10733,7 @@ void VR::draw_quad_view_ui() {
         m_quad_view_offset_y->draw("Offset down/up (+ = up)");
         m_quad_view_follow_gaze->draw("Follow gaze (eye tracking)");
         if (m_quad_view_follow_gaze->value()) {
+            m_quad_view_gaze_smoothing_ms->draw("Gaze smoothing (ms, 0 = raw)");
             m_quad_view_gaze_dead_zone->draw("Gaze dead zone");
 
             if (!m_openxr->eye_gaze_supported) {
@@ -10837,4 +10838,45 @@ uevr::quadview::Tangents VR::get_quad_view_focus_tangents(uint32_t eye) const {
     }
     const auto s = get_quad_view_settings();
     return uevr::quadview::focus_window_for(full, s, 0.0, 0.0);
+}
+
+void VR::latch_quad_view_focus(uint64_t frame) const {
+    if (!is_using_quad_view()) {
+        return;
+    }
+
+    std::scoped_lock _{m_quad_focus_render_mtx};
+    if (m_quad_focus_render_set && m_quad_focus_render_frame == frame) {
+        return;
+    }
+
+    for (uint32_t eye = 0; eye < 2; ++eye) {
+        m_quad_focus_render[eye] = get_quad_view_focus_tangents(eye);
+    }
+
+    m_quad_focus_render_set = true;
+    m_quad_focus_render_frame = frame;
+}
+
+uevr::quadview::Tangents VR::get_quad_view_focus_tangents_rendered(uint32_t eye) const {
+    eye = std::min<uint32_t>(eye, 1);
+
+    // The submit state is per render frame, so the sharp-view projection and
+    // the compose that runs a moment later both read the same focus even when
+    // the next frame has already started. The latch is only the fallback for
+    // frames where no submit state was captured (e.g. startup).
+    if (m_openxr != nullptr) {
+        if (const auto focus = m_openxr->peek_submit_quad_focus()) {
+            return (*focus)[eye];
+        }
+    }
+
+    {
+        std::scoped_lock _{m_quad_focus_render_mtx};
+        if (m_quad_focus_render_set) {
+            return m_quad_focus_render[eye];
+        }
+    }
+
+    return get_quad_view_focus_tangents(eye);
 }
