@@ -45,7 +45,8 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 | Sharp views | Pixel density | 1.00 | Sharp window resolution relative to the headset's native density. |
 | Sharp views | Offset left/right, down/up | 0.00 | Moves the window for trackers that sit slightly off-centre. |
 | Sharp views | Follow gaze | on | Uses `XR_EXT_eye_gaze_interaction` to place the window. Restart after changing. |
-| Sharp views | Gaze dead zone | 0.03 | Tangent units (~1.7°) the gaze must move before the window follows. |
+| Sharp views | Gaze smoothing | 8 ms | Low-pass time constant that averages eye-tracker noise. `0` follows the raw gaze. |
+| Sharp views | Gaze dead zone | 0 (off) | Optional tangent-unit hold (~1.7°) before the window follows. |
 | Wide views | Resolution | 0.20 | Wide view size as a share of the headset's per-eye resolution. |
 | Wide views | LOD scale | 0.50 | LOD bias for the wide views. Nanite ignores it. |
 | Wide views | Cull objects smaller than | 0 (off) | Sets `foliage.MinimumScreenSize` for the wide views; the sharp area keeps small objects. |
