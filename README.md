@@ -25,13 +25,13 @@ Quad View renders four views per frame instead of two:
 | View | Covers | Resolution |
 | --- | --- | --- |
 | Wide L/R | the whole per-eye field of view | 20% of native per eye by default |
-| Sharp L/R | a small window around where you look | 25% of the eye, native pixel density |
+| Sharp L/R | a small window around where you look | 35% of the eye, native pixel density |
 
 The wide pair fills the periphery cheaply. The sharp pair is a small window at native density, placed where the eye can resolve detail. UEVR composes all four into one normal stereo image with edge blending, so runtimes do not need to stack projection layers. On OpenXR with eye tracking the window follows your gaze; without eye tracking it stays centred or where the offset sliders put it.
 
 ![Quad View atlas layout](docs/images/quad-view-atlas.png)
 
-At the default settings the atlas costs about 11% of the pixels of native stereo at 3840×3552. The in-game panel prints the atlas size and share for your actual headset.
+At the default settings the atlas costs about 16% of the pixels of native stereo at 3840×3552. The in-game panel prints the atlas size and share for your actual headset.
 
 ### Settings
 
@@ -41,12 +41,12 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 
 | Section | Setting | Default | What it does |
 | --- | --- | --- | --- |
-| Sharp views | Width / Height with eye tracking | 0.25 / 0.25 | Window size as a share of the eye's field of view while it follows your gaze. |
+| Sharp views | Width / Height with eye tracking | 0.35 / 0.35 | Window size as a share of the eye's field of view while it follows your gaze. |
 | Sharp views | Width / Height without eye tracking | 0.50 / 0.45 | Larger window used when the runtime has no eye tracking, since it cannot follow the eyes. |
 | Sharp views | Pixel density | 1.00 | Sharp window resolution relative to the headset's native density. |
 | Sharp views | Offset left/right, down/up | 0.00 | Moves the window for trackers that sit slightly off-centre. |
 | Sharp views | Follow gaze | on | Uses `XR_EXT_eye_gaze_interaction` to place the window. Restart after changing. |
-| Sharp views | Gaze smoothing | 8 ms | Low-pass time constant that averages eye-tracker noise. `0` follows the raw gaze. |
+| Sharp views | Gaze smoothing | 0.15 ms | Low-pass time constant for the gaze. The default is close to raw (a median of three still rejects spikes); raise it to a few ms for a noisy tracker. `0` follows the raw gaze. |
 | Sharp views | Gaze dead zone | 0 (off) | Optional tangent-unit hold (~1.7°) before the window follows. |
 | Wide views | Resolution | 0.20 | Wide view size as a share of the headset's per-eye resolution. |
 | Wide views | LOD scale | 0.50 | LOD bias for the wide views. Nanite ignores it. |
@@ -85,6 +85,7 @@ The [release page](https://github.com/Letrange-g/UEVR-QuadView/releases) has `ue
 
 Full documentation: [docs/quad-view.md](docs/quad-view.md)
 Engine compatibility notes: [docs/quad-view-ue4-ue5.md](docs/quad-view-ue4-ue5.md)
+For maintainers, every touch point in the code: [docs/quad-view-integration.md](docs/quad-view-integration.md)
 
 ## Features
 
