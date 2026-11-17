@@ -60,7 +60,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 | Blending | Show sharp area outline | off | Green outline for tuning the window. |
 | Blending | Remove vignette | on | Sets `r.Tonemapper.Quality` while Quad View runs, so each sharp view does not get its own dark edges. |
 | Blending | Share exposure | on | Freezes auto-exposure so the wide and sharp views keep the same brightness. |
-| Blending | Brightness | 1.00 | Multiplier for the D3D11 composed image; shown when exposure is shared. |
+| Blending | Brightness | 1.00 | Multiplier for the composed image; shown and applied when exposure is shared. |
 | Blending | Render sharp views first | off | Workaround for games whose Groom hair only draws in the first two views. |
 | Debug | Show wide views only / sharp layer only | off | Inspect periphery quality or isolate the sharp layer. |
 
@@ -77,7 +77,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 - **UE4** is opt-in (*Allow on Unreal Engine 4*) and should use D3D12. **UE4 + D3D11 is known to crash with four views.** See the [UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md) for the workarounds and remaining gaps.
 - Depth submission is disabled while Quad View runs because the atlas layout is not the stereo layout the runtime would reproject with.
 - Foveated-rendering plugins fight Quad View over the views and render targets; UEVR skips plugins whose file name contains `foveat` when Quad View is selected.
-- Quad View turns itself off while Extreme Compatibility Mode, Native Stereo Fix, SceneView compatibility, Splitscreen compatibility or stereo emulation is active.
+- Quad View turns itself off while Extreme Compatibility Mode, SceneView compatibility, Splitscreen compatibility or stereo emulation is active. Native Stereo Fix only runs with the Native Stereo method, so games that need it are not supported by Quad View yet.
 
 ### Test build
 
