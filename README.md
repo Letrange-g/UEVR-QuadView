@@ -41,7 +41,8 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 
 | Section | Setting | Default | What it does |
 | --- | --- | --- | --- |
-| Sharp views | Width / Height | 0.25 / 0.25 | Window size as a share of the eye's field of view. |
+| Sharp views | Width / Height with eye tracking | 0.25 / 0.25 | Window size as a share of the eye's field of view while it follows your gaze. |
+| Sharp views | Width / Height without eye tracking | 0.50 / 0.45 | Larger window used when the runtime has no eye tracking, since it cannot follow the eyes. |
 | Sharp views | Pixel density | 1.00 | Sharp window resolution relative to the headset's native density. |
 | Sharp views | Offset left/right, down/up | 0.00 | Moves the window for trackers that sit slightly off-centre. |
 | Sharp views | Follow gaze | on | Uses `XR_EXT_eye_gaze_interaction` to place the window. Restart after changing. |
@@ -53,7 +54,9 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 | Wide views | CPU particles | 1.00 | Sets `r.EmitterSpawnRateScale`. Whole-image, so it also thins particles in the sharp window. |
 | Blending | Compose into one image | on | Composes the atlas into one stereo image; required for edge blending. |
 | Blending | Edge blend | 0.20 | Share of the sharp window that fades into the wide view. |
-| Blending | Sharp area shape | Rounded | Rectangle, rounded rectangle or ellipse. Rounded/ellipse need D3D12. |
+| Blending | Sharp area shape | Rounded | Rectangle, rounded rectangle or ellipse. |
+| Blending | Sharpen the sharp views | 0.50 | Contrast-adaptive sharpening of the sharp window. `0` turns it off. |
+| Blending | Smooth wide-view upscaling | on | Bicubic upscaling of the wide views, so the periphery shimmers less at low resolution. |
 | Blending | Show sharp area outline | off | Green outline for tuning the window. |
 | Blending | Remove vignette | on | Sets `r.Tonemapper.Quality` while Quad View runs, so each sharp view does not get its own dark edges. |
 | Blending | Share exposure | on | Freezes auto-exposure so the wide and sharp views keep the same brightness. |
@@ -72,7 +75,6 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 
 - **OpenXR.** OpenVR receives only the wide views.
 - **UE4** is opt-in (*Allow on Unreal Engine 4*) and should use D3D12. **UE4 + D3D11 is known to crash with four views.** See the [UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md) for the workarounds and remaining gaps.
-- **D3D11** composes a rectangular sharp area; the rounded and ellipse shapes need D3D12.
 - Depth submission is disabled while Quad View runs because the atlas layout is not the stereo layout the runtime would reproject with.
 - Foveated-rendering plugins fight Quad View over the views and render targets; UEVR skips plugins whose file name contains `foveat` when Quad View is selected.
 - Quad View turns itself off while Extreme Compatibility Mode, Native Stereo Fix, SceneView compatibility, Splitscreen compatibility or stereo emulation is active.
