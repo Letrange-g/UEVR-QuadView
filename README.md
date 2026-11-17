@@ -73,7 +73,7 @@ At the default settings the atlas costs about 16% of the pixels of native stereo
 
 ### Requirements and limits
 
-- **OpenXR.** OpenVR receives only the wide views.
+- **OpenXR.** On OpenVR the game renders plain Native Stereo and the panel says so.
 - **UE4** is opt-in (*Allow on Unreal Engine 4*) and should use D3D12. **UE4 + D3D11 is known to crash with four views.** See the [UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md) for the workarounds and remaining gaps.
 - Depth submission is disabled while Quad View runs because the atlas layout is not the stereo layout the runtime would reproject with.
 - Foveated-rendering plugins fight Quad View over the views and render targets; UEVR skips plugins whose file name contains `foveat` when Quad View is selected.
