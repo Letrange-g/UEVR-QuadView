@@ -4,7 +4,7 @@ Universal Unreal Engine VR Mod (4/5) — **experimental Quad View fork** of [Joe
 
 > Quad View is an opt-in fourth rendering method. Everything else is the regular UEVR backend.
 >
-> **[Download the test build](https://github.com/Letrange-g/UEVR-QuadView/releases/tag/quadview-b3c523a)** · **[Upstream PR #42](https://github.com/joeyhodge/UEVR/pull/42)** · **[Full settings and limits](docs/quad-view.md)**
+> **[Download the test build](https://github.com/Letrange-g/UEVR-QuadView/releases/tag/quadview-b3c523a)** · **[Upstream PR #42](https://github.com/joeyhodge/UEVR/pull/42)** · **[Full settings and limits](docs/quad-view.md)** · **[UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md)**
 
 ## Supported Engine Versions
 
@@ -57,7 +57,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 | Blending | Show sharp area outline | off | Green outline for tuning the window. |
 | Blending | Remove vignette | on | Sets `r.Tonemapper.Quality` while Quad View runs, so each sharp view does not get its own dark edges. |
 | Blending | Share exposure | on | Freezes auto-exposure so the wide and sharp views keep the same brightness. |
-| Blending | Brightness | 1.00 | Multiplier for the composed image; shown when exposure is shared. |
+| Blending | Brightness | 1.00 | Multiplier for the D3D11 composed image; shown when exposure is shared. |
 | Blending | Render sharp views first | off | Workaround for games whose Groom hair only draws in the first two views. |
 | Debug | Show wide views only / sharp layer only | off | Inspect periphery quality or isolate the sharp layer. |
 
@@ -71,7 +71,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 ### Requirements and limits
 
 - **OpenXR.** OpenVR receives only the wide views.
-- **UE4** is opt-in (*Allow on Unreal Engine 4*) and should use D3D12. **UE4 + D3D11 is known to crash with four views.**
+- **UE4** is opt-in (*Allow on Unreal Engine 4*) and should use D3D12. **UE4 + D3D11 is known to crash with four views.** See the [UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md) for the workarounds and remaining gaps.
 - **D3D11** composes a rectangular sharp area; the rounded and ellipse shapes need D3D12.
 - Depth submission is disabled while Quad View runs because the atlas layout is not the stereo layout the runtime would reproject with.
 - Foveated-rendering plugins fight Quad View over the views and render targets; UEVR skips plugins whose file name contains `foveat` when Quad View is selected.
@@ -82,6 +82,7 @@ At the default settings the atlas costs about 11% of the pixels of native stereo
 The [release page](https://github.com/Letrange-g/UEVR-QuadView/releases) has `uevr.zip` (injector, backend, nullifier, Lua API and runtime DLLs) and a standalone `UEVRBackend.dll` for existing UEVR installs. The injector needs the **.NET 6 Desktop Runtime**. This is a test build, not an official JoeyHodge or praydog release.
 
 Full documentation: [docs/quad-view.md](docs/quad-view.md)
+Engine compatibility notes: [docs/quad-view-ue4-ue5.md](docs/quad-view-ue4-ue5.md)
 
 ## Features
 
