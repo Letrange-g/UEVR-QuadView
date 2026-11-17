@@ -23616,7 +23616,16 @@ sdk::FSceneView* FFakeStereoRenderingHook::sceneview_constructor(sdk::FSceneView
                 auto* const planned = g_quad_view_states[view_index];
                 if (planned != nullptr) {
                     init_options->set_scene_state(planned);
-                    init_options->set_stereo_pass((uint32_t)(view_index % 2 == 0 ? 1 : 2));
+                    // Default: each view carries its eye's pass (left = 1,
+                    // right = 2), which makes both left views primaries.
+                    // Experiment: only the first view is a primary, as on
+                    // UE5, so per-primary work (cascaded shadow setup) is
+                    // done once. Each view keeps its own state either way.
+                    const bool single_primary = VR::get()->is_quad_view_ue4_single_primary();
+                    const uint32_t pass = single_primary
+                        ? (view_index == 0 ? 1u : 2u)
+                        : (view_index % 2 == 0 ? 1u : 2u);
+                    init_options->set_stereo_pass(pass);
                 }
             }
         }
