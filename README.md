@@ -4,7 +4,7 @@ Universal Unreal Engine VR Mod (4/5) — **experimental Quad View fork** of [Joe
 
 > Quad View is an opt-in fourth rendering method. Everything else is the regular UEVR backend.
 >
-> **[Download the test build](https://github.com/Letrange-g/UEVR-QuadView/releases/tag/quadview-b3c523a)** · **[Upstream PR #42](https://github.com/joeyhodge/UEVR/pull/42)** · **[Full settings and limits](docs/quad-view.md)** · **[UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md)**
+> **[Download the test build](https://github.com/Letrange-g/UEVR-QuadView/releases/tag/quadview-e3f49ad)** · **[Upstream PR #42](https://github.com/joeyhodge/UEVR/pull/42)** · **[Full settings and limits](docs/quad-view.md)** · **[UE4/UE5 compatibility notes](docs/quad-view-ue4-ue5.md)**
 
 ## Supported Engine Versions
 
