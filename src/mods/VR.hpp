@@ -544,7 +544,6 @@ public:
     // Follow gaze is on and the runtime started with eye tracking.
     bool is_quad_view_gaze_available() const;
     bool is_quad_view_ue4_allowed() const { return m_quad_view_allow_ue4->value(); }
-    bool is_quad_view_ue4_single_primary() const { return m_quad_view_ue4_single_primary->value(); }
     bool is_quad_view_ue4_ready() const { return m_quad_view_ue4_settle_frames >= QUAD_VIEW_UE4_SETTLE_FRAMES; }
     bool is_quad_view_sharp_first() const { return m_quad_view_sharp_first->value(); }
     float get_quad_view_wide_lod_scale() const { return m_quad_view_wide_lod_scale->value(); }
@@ -1730,10 +1729,6 @@ private:
     const ModToggle::Ptr m_quad_view_allow_ue4{ ModToggle::create(generate_name("QuadViewAllowUE4"), false) };
     // UE4: leave the game's occlusion queries on (Quad View turns them off by
     // default as a crash workaround, which also turns occlusion culling off).
-    // UE4 experiment: only the first view is a primary (left-eye pass); the
-    // other three are secondaries, so work Unreal does once per primary view
-    // (cascaded shadow setup) is not repeated for the left sharp view.
-    const ModToggle::Ptr m_quad_view_ue4_single_primary{ ModToggle::create(generate_name("QuadViewUE4SinglePrimary"), false) };
     const ModToggle::Ptr m_quad_view_ue4_keep_occlusion{ ModToggle::create(generate_name("QuadViewUE4KeepOcclusion"), false) };
     const ModToggle::Ptr m_quad_view_cull_actors{ ModToggle::create(generate_name("QuadViewCullSmallActors"), false) };
     const ModSlider::Ptr m_quad_view_cpu_particles{ ModSlider::create(generate_name("QuadViewCPUParticles"), 0.1f, 1.0f, 1.0f) };
@@ -2087,7 +2082,6 @@ public:
             *m_quad_view_cull_actors,
             *m_quad_view_allow_ue4,
             *m_quad_view_ue4_keep_occlusion,
-            *m_quad_view_ue4_single_primary,
             *m_quad_view_sharp_first,
             *m_quad_view_sharpen,
             *m_quad_view_wide_bicubic,

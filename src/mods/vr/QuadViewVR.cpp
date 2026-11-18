@@ -285,8 +285,6 @@ void VR::draw_quad_view_ui() {
             ImGui::TextColored(warn, "UE4 with D3D11 can crash with four views (D3D11 query error). If it does, use Native Stereo.");
         }
         if (m_quad_view_allow_ue4->value()) {
-            m_quad_view_ue4_single_primary->draw("UE4: share shadows with the wide view (experimental)");
-            ImGui::TextDisabled("Makes the left wide view the only primary view, so shadow maps are set up once\ninstead of twice. Compare the frame rate; turn it off if the left sharp window looks wrong.");
             m_quad_view_ue4_keep_occlusion->draw("UE4: keep occlusion culling (faster, may crash)");
             ImGui::TextDisabled(m_quad_view_ue4_keep_occlusion->value()
                 ? "Occlusion queries stay on: hidden objects are skipped. Turn this off if the game crashes."

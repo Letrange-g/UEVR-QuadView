@@ -45,13 +45,8 @@ UE4.26 D3D11 games have since run with it, so it is worth a try.
 While Quad View runs on UE4 the occlusion queries are turned off as a crash
 workaround. That also turns occlusion culling off, so Unreal draws hidden
 objects in all four views. *UE4: keep occlusion culling*
-(`QuadViewUE4KeepOcclusion`, `QuadViewUE4SinglePrimary`, off by default) leaves the queries on: faster in
+(`QuadViewUE4KeepOcclusion`, off by default) leaves the queries on: faster in
 dense scenes, but turn it off again if the game crashes.
-
-*UE4: share shadows with the wide view* (`QuadViewUE4SinglePrimary`, off by
-default, experimental) makes the first view the only primary view, as on UE5.
-By default both left views carry the left-eye pass and are primaries, so
-per-primary work such as the cascaded shadow setup may run twice.
 
 UE4 + D3D11 was first seen crashing with four views (D3D11 query error).
 Use Native Stereo there.
